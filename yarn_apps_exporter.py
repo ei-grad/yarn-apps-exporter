@@ -15,9 +15,7 @@ except ImportError:
     from urllib2 import Request, urlopen  # noqa, Python 2
 
 
-HIVE_UUID_RE = re.compile(
-    "HIVE-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-)
+UUID_RE = re.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
 def tick(resource_manager_url, fname):
@@ -37,15 +35,13 @@ def tick(resource_manager_url, fname):
         ]:
             data = defaultdict(lambda: 0)
             for i in apps:
+                i["name"] = UUID_RE.sub("{uuid}", i["name"])
                 data[key(i)] += i[metric]
             f.write(
                 "# HELP yarneigrad_%s YARN %s per App/User/Queue\n" % (metric, metric)
             )
             f.write("# TYPE yarneigrad_%s %s\n" % (metric, metric_type))
             for (name, user, queue), value in data.items():
-                # mask HIVE-{uuid} application names
-                if HIVE_UUID_RE.match(name):
-                    name = "HIVE-xxx"
                 f.write(
                     'yarn_apps_%s{name="%s", user="%s", queue="%s"} %s\n'
                     % (metric, name, user, queue, value)
