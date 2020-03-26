@@ -38,9 +38,9 @@ def tick(resource_manager_url, fname):
                 i["name"] = UUID_RE.sub("{uuid}", i["name"])
                 data[key(i)] += i[metric]
             f.write(
-                "# HELP yarneigrad_%s YARN %s per App/User/Queue\n" % (metric, metric)
+                "# HELP yarn_apps_%s YARN %s per App/User/Queue\n" % (metric, metric)
             )
-            f.write("# TYPE yarneigrad_%s %s\n" % (metric, metric_type))
+            f.write("# TYPE yarn_apps_%s %s\n" % (metric, metric_type))
             for (name, user, queue), value in data.items():
                 f.write(
                     'yarn_apps_%s{name="%s", user="%s", queue="%s"} %s\n'
