@@ -52,13 +52,16 @@ def write_count_by_state(f, apps):
         )
 
 
-def tick(resource_manager_url, fname):
+def tick(resource_manager_url, fname, patterns):
 
     request = Request(resource_manager_url + "/ws/v1/cluster/apps")
     request.add_header("Accept", "application/json")
     response = urlopen(request)
     apps = json.load(response)["apps"]["app"]
 
+    for pattern, replacement in patterns:
+        for app in apps:
+            app["name"] = pattern.sub(replacement, app["name"])
 
     with open(fname + ".swp", "w") as f:
         write_resource_usage(f, [i for i in apps if i["state"] == "RUNNING"])
@@ -68,11 +71,17 @@ def tick(resource_manager_url, fname):
 
 
 def loop(args):
+    if args.patterns is not None:
+        with open(args.patterns) as f:
+            patterns = [
+                (re.compile(pattern.rstrip('\n')), replacement.rstrip('\n'))
+                for replacement, pattern in zip(f, f)
+            ]
+    else:
+        patterns = []
     while True:
         try:
-            tick(
-                args.resource_manager_url, args.output_file,
-            )
+            tick(args.resource_manager_url, args.output_file, patterns)
             sleep(10)
         except KeyboardInterrupt:
             break
@@ -89,6 +98,7 @@ def main():
         "--output-file",
         default="/opt/prometheus/exporters/node_exporter_current/yarn_apps.prom",
     )
+    parser.add_argument("--patterns", help="file containing replacement patterns")
     args = parser.parse_args()
     loop(args)
 

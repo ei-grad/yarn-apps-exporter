@@ -33,3 +33,23 @@ EOF
 sudo systemctl start yarn-apps-exporter
 sudo systemctl enable yarn-apps-exporter
 ```
+
+Replacement Patterns
+--------------------
+
+To have `HIVE-{uuid}` application name instead of many unique names:
+
+1. Put `replacement\npattern\n` lines to patterns.txt file:
+
+```
+{uuid}
+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+```
+
+2. Specify `--patterns` argument:
+
+```bash
+yarn-apps-exporter http://resource.manager.hostname:8088 --patterns patterns.txt
+```
+
+You can add more patterns in the next lines.
