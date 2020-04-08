@@ -15,37 +15,54 @@ except ImportError:
     from urllib2 import Request, urlopen  # noqa, Python 2
 
 
-UUID_RE = re.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+def write_resource_usage(f, apps):
+    key = itemgetter("name", "user", "queue")
+    for metric, metric_type in [
+        ("allocatedVCores", "gauge"),
+        ("allocatedMB", "gauge"),
+        ("vcoreSeconds", "counter"),
+    ]:
+        data = defaultdict(lambda: 0)
+        for i in apps:
+            data[key(i)] += i[metric]
+        f.write(
+            "# HELP yarn_apps_%s YARN %s per App/User/Queue\n" % (metric, metric)
+        )
+        f.write("# TYPE yarn_apps_%s %s\n" % (metric, metric_type))
+        for (name, user, queue), value in data.items():
+            f.write(
+                'yarn_apps_%s{name="%s", user="%s", queue="%s"} %s\n'
+                % (metric, name, user, queue, value)
+            )
+
+
+def write_count_by_state(f, apps):
+    key = itemgetter("name", "user", "queue", "state")
+    data = defaultdict(lambda: 0)
+    for i in apps:
+        data[key(i)] += 1
+    f.write(
+        "# HELP yarn_apps_by_state YARN applications count by App/User/Queue/State\n"
+    )
+    f.write("# TYPE yarn_apps_by_state gauge\n")
+    for (name, user, queue, state), value in data.items():
+        f.write(
+            'yarn_apps_by_state{name="%s", user="%s", queue="%s", state="%s"} %s\n'
+            % (name, user, queue, state, value)
+        )
 
 
 def tick(resource_manager_url, fname):
 
-    request = Request(resource_manager_url + "/ws/v1/cluster/apps?states=RUNNING")
+    request = Request(resource_manager_url + "/ws/v1/cluster/apps")
     request.add_header("Accept", "application/json")
     response = urlopen(request)
     apps = json.load(response)["apps"]["app"]
 
-    key = itemgetter("name", "user", "queue")
 
     with open(fname + ".swp", "w") as f:
-        for metric, metric_type in [
-            ("allocatedVCores", "gauge"),
-            ("allocatedMB", "gauge"),
-            ("vcoreSeconds", "counter"),
-        ]:
-            data = defaultdict(lambda: 0)
-            for i in apps:
-                i["name"] = UUID_RE.sub("{uuid}", i["name"])
-                data[key(i)] += i[metric]
-            f.write(
-                "# HELP yarn_apps_%s YARN %s per App/User/Queue\n" % (metric, metric)
-            )
-            f.write("# TYPE yarn_apps_%s %s\n" % (metric, metric_type))
-            for (name, user, queue), value in data.items():
-                f.write(
-                    'yarn_apps_%s{name="%s", user="%s", queue="%s"} %s\n'
-                    % (metric, name, user, queue, value)
-                )
+        write_resource_usage(f, [i for i in apps if i["state"] == "RUNNING"])
+        write_count_by_state(f, apps)
 
     os.rename(fname + ".swp", fname)
 
