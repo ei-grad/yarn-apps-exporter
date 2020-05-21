@@ -85,8 +85,6 @@ def loop(args):
             sleep(10)
         except KeyboardInterrupt:
             break
-        except Exception:
-            logging.exception("unexpected error")
 
 
 def main():
