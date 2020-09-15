@@ -26,6 +26,7 @@ Description=Write YARN apps metrics for node_exporter textfile
 
 [Service]
 ExecStart=/usr/local/bin/yarn-apps-exporter http://resource.manager.hostname:8088
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
